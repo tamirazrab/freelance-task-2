@@ -1,5 +1,8 @@
-import {Component, OnInit} from '@angular/core';
-import {emailValidator} from "./utils";
+import { Component, OnInit } from '@angular/core';
+import { emailValidator } from "./utils";
+import { HttpClient, HttpErrorResponse } from "@angular/common/http";
+import { catchError, EMPTY, map, Observable } from "rxjs";
+import { MatTableDataSource } from "@angular/material/table";
 
 export interface PersonResponse {
   tsID: string;
@@ -7,40 +10,9 @@ export interface PersonResponse {
   email: string;
   location: string;
   gender: string;
-  isInvalid?: Boolean
+  genderIcon: string;
+  isInvalid: Boolean
 }
-
-const ELEMENT_DATA: PersonResponse[] = [{
-  "tsID": "1",
-  "name": "Jane Doe",
-  "email": "jane.doe@chloedog.org",
-  "location": "United State",
-  "gender": "famale"
-}, {
-  "tsID": "2",
-  "name": "David Pierce",
-  "email": "david.pierce@chloedog.org",
-  "location": "Finland",
-  "gender": "male"
-}, {
-  "tsID": "3",
-  "name": "Paul Jone",
-  "email": "paul.jones@chloedog.org",
-  "location": "Egypt",
-  "gender": "male"
-}, {
-  "tsID": "4",
-  "name": "Mary Smith",
-  "email": "",
-  "location": "Norway",
-  "gender": "female"
-}, {
-  "tsID": "5",
-  "name": "John Davis",
-  "email": "john.davischloedog.org",
-  "location": "Canada",
-  "gender": "male"
-}]
 
 @Component({
   selector: 'app-root',
@@ -48,17 +20,49 @@ const ELEMENT_DATA: PersonResponse[] = [{
   styleUrls: ['./app.component.scss']
 })
 export class AppComponent implements OnInit {
+  apiUrl: string = 'https://dothbe.com/'
+
+  displayedColumns: string[] = ['name', 'email', 'location', 'gender'];
+  dataSource = new MatTableDataSource<PersonResponse>()
+
+  constructor(private http: HttpClient) {
+  }
+
+
   ngOnInit(): void {
-    ELEMENT_DATA.forEach(element => {
-      const isValidEmail = emailValidator(element.email)
-      element.isInvalid = !isValidEmail;
+    this.getAllPersons().subscribe((persons: PersonResponse[]) => {
+      persons.forEach(person => {
+        person.genderIcon = this.genderValidate(person.gender)
+        const isValidEmail = emailValidator(person.email)
+        person.isInvalid = !isValidEmail;
+      })
+      this.dataSource.data = persons;
     })
   }
 
+
   title = 'freelance-task-2';
 
-  displayedColumns: string[] = ['name', 'email', 'location', 'gender'];
-  dataSource = ELEMENT_DATA;
+
+  getAllPersons(): Observable<PersonResponse[]> {
+    return this.http.get<[PersonResponse[]]>(this.apiUrl + '/test').pipe(
+      map((response) => response[0]),
+      catchError((error: HttpErrorResponse) => {
+        if (error.error instanceof Error) {
+          console.error('An error occurred:', error.error.message);
+        } else {
+          console.error(`Backend returned code ${error.status}, body was: ${error.error}`);
+        }
+        return EMPTY;
+      })
+    )
+  }
+
+  genderValidate(gender: string) {
+    const isGenderSpecified = gender === "female" || gender === "male"
+    const genderIcon = (gender === "female" ? "female" : "male")
+    return isGenderSpecified ? genderIcon : "question_mark"
+  }
 
 
 }
